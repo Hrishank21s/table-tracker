@@ -1,1 +1,1 @@
-web: gunicorn "table_tracker:app"
+web: gunicorn table_tracker:app
