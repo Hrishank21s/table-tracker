@@ -2046,4 +2046,8 @@ if __name__ == "__main__":
         print(f"\n❌ System error: {e}")
         import traceback
         traceback.print_exc()
+def create_app():
+    tracker = TableTracker()
+    return tracker.app
 
+app = create_app()
