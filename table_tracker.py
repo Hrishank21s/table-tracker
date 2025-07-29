@@ -13,9 +13,7 @@ from flask_login import (
     current_user,
 )
 from werkzeug.security import generate_password_hash, check_password_hash
-from functools import wraps
 from datetime import datetime
-import socket
 import os
 
 # ----------------------
@@ -114,7 +112,8 @@ class TableTracker:
         CORS(self.app)
         self.setup_authentication()
         self.setup_routes()
-        # Start background thread to update timers
+
+        # Start background thread to update timers every second
         threading.Thread(target=self.update_timers, daemon=True).start()
 
     # ----------------------
@@ -137,7 +136,12 @@ class TableTracker:
         @self.app.route("/")
         @login_required
         def home():
-            return render_template_string(self.get_home_template())
+            # Pass current_user.username and role as context, so no f-string needed
+            return render_template_string(
+                self.get_home_template(),
+                username=current_user.username,
+                role=current_user.role,
+            )
 
         @self.app.route("/login", methods=["GET", "POST"])
         def login():
@@ -464,20 +468,7 @@ class TableTracker:
                 time.sleep(1)
 
     # -----------------------------------------
-    # Utility method - get local IP (unused)
-    # -----------------------------------------
-    def get_local_ip(self):
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.connect(("8.8.8.8", 80))
-            ip = s.getsockname()[0]
-            s.close()
-            return ip
-        except:
-            return "127.0.0.1"
-
-    # -----------------------------------------
-    # HTML Templates (login, home, game UI)
+    # HTML Templates
     # -----------------------------------------
 
     def get_login_template(self):
@@ -517,57 +508,58 @@ class TableTracker:
         """
 
     def get_home_template(self):
-        return f"""
+        # Uses passed context variables {{ username }} and {{ role }} for dynamic content
+        return """
 <!doctype html>
 <html lang="en">
 <head>
 <title>Table Tracker - Home</title>
 <meta charset="UTF-8" />
 <style>
-  body {{ font-family: Arial, Helvetica, sans-serif; background: #121212; color: white; margin: 0; padding: 0; }}
-  header {{ padding: 20px; background: #222; display:flex; justify-content: space-between; align-items: center; }}
-  a {{ color: #1abc9c; text-decoration: none; font-weight: bold; }}
-  h1 {{ margin-left: 10px; }}
-  section {{ padding: 20px; }}
-  button {{ margin: 10px 5px; padding: 10px 15px; background: #1abc9c; border: none; border-radius: 4px; cursor: pointer; color: #121212; font-weight: bold; }}
-  .overview {{ display: flex; gap: 40px; justify-content: center; }}
-  .panel {{ background: #222; padding: 20px; border-radius: 10px; width: 300px; }}
-  .panel h2 {{ margin-top: 0; margin-bottom: 15px; }}
-  ul {{ list-style: none; padding: 0; }}
-  li {{ margin-bottom: 8px; }}
-  .links a {{ display:block; margin: 5px 0; color: #3498db; }}
-  .user-info {{ font-size: 14px; margin-left: auto; color: #aaa; }}
+  body { font-family: Arial, Helvetica, sans-serif; background: #121212; color: white; margin: 0; padding: 0; }
+  header { padding: 20px; background: #222; display:flex; justify-content: space-between; align-items: center; }
+  a { color: #1abc9c; text-decoration: none; font-weight: bold; }
+  h1 { margin-left: 10px; }
+  section { padding: 20px; }
+  button { margin: 10px 5px; padding: 10px 15px; background: #1abc9c; border: none; border-radius: 4px; cursor: pointer; color: #121212; font-weight: bold; }
+  .overview { display: flex; gap: 40px; justify-content: center; }
+  .panel { background: #222; padding: 20px; border-radius: 10px; width: 300px; }
+  .panel h2 { margin-top: 0; margin-bottom: 15px; }
+  ul { list-style: none; padding: 0; }
+  li { margin-bottom: 8px; }
+  .links a { display:block; margin: 5px 0; color: #3498db; }
+  .user-info { font-size: 14px; margin-left: auto; color: #aaa; }
 </style>
 </head>
 <body>
 <header>
   <h1>🎯 Table Tracker</h1>
   <div>
-    <span class="user-info">👤 {current_user.username} ({current_user.role.title()})</span>
+    <span class="user-info">👤 {{ username }} ({{ role.title() }})</span>
     &nbsp; | &nbsp;
-    <a href="{{{{ url_for('logout') }}}}">Logout</a>
+    <a href="{{ url_for('logout') }}">Logout</a>
   </div>
 </header>
 <section>
-  <h2>Welcome, {current_user.username}!</h2>
+  <h2>Welcome, {{ username }}!</h2>
   <p>Professional Table Management System with Snooker and Pool Tracking.</p>
 
   <div class="overview">
     <div class="panel">
       <h2>Snooker Tables</h2>
       <p>Full-featured snooker table tracking with timer, billing, and session management.</p>
-      <a href="{{{{ url_for('snooker') }}}}"><button>Go to Snooker</button></a>
-      <a href="{{{{ url_for('snooker_mobile') }}}}"><button>Snooker Mobile UI</button></a>
+      <a href="{{ url_for('snooker') }}"><button>Go to Snooker</button></a>
+      <a href="{{ url_for('snooker_mobile') }}"><button>Snooker Mobile UI</button></a>
     </div>
     <div class="panel">
       <h2>Pool Tables</h2>
       <p>Pool table management with lower rates, split billing, and mobile support.</p>
-      <a href="{{{{ url_for('pool') }}}}"><button>Go to Pool</button></a>
-      <a href="{{{{ url_for('pool_mobile') }}}}"><button>Pool Mobile UI</button></a>
+      <a href="{{ url_for('pool') }}"><button>Go to Pool</button></a>
+      <a href="{{ url_for('pool_mobile') }}"><button>Pool Mobile UI</button></a>
     </div>
   </div>
 
-  {% if current_user.role == 'admin' %}
+  {% if role == 'admin' %}
   <section style="margin-top: 40px;">
     <h2>👥 User Management</h2>
     <div>
@@ -592,80 +584,81 @@ class TableTracker:
 </section>
 
 <script>
-  async function fetchUsers() {{
-    try {{
+  async function fetchUsers() {
+    try {
       let res = await fetch('/api/users');
       let data = await res.json();
-      if (data.success) {{
+      if (data.success) {
         const list = document.getElementById('userList');
         list.innerHTML = '';
-        data.users.forEach(user => {{
+        data.users.forEach(user => {
           let li = document.createElement('li');
           li.textContent = user.username + " (" + user.role + ")";
-          if (user.can_remove) {{
+          if (user.can_remove) {
             let btn = document.createElement('button');
             btn.textContent = 'Remove';
             btn.style.marginLeft = '10px';
             btn.onclick = () => removeUser(user.username);
             li.appendChild(btn);
-          }}
+          }
           list.appendChild(li);
-        }});
-      }} else {{
+        });
+      } else {
         alert(data.error || "Failed to load users.");
-      }}
-    }} catch (err) {{
+      }
+    } catch (err) {
       alert("Error fetching users: " + err);
-    }}
-  }}
+    }
+  }
 
-  async function addUser(event) {{
+  async function addUser(event) {
     event.preventDefault();
-    try {{
+    try {
       const username = document.getElementById('newUsername').value.trim();
       const password = document.getElementById('newPassword').value.trim();
       const role = document.getElementById('newRole').value;
-      const res = await fetch('/api/users/add', {{
+      const res = await fetch('/api/users/add', {
         method: 'POST',
-        headers: {{ 'Content-Type': 'application/json' }},
-        body: JSON.stringify({{ username, password, role }})
-      }});
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, role })
+      });
       const data = await res.json();
-      if (data.success) {{
+      if (data.success) {
         alert(data.message);
         document.getElementById('addUserForm').reset();
         fetchUsers();
-      }} else {{
+      } else {
         alert(data.error);
-      }}
-    }} catch (err) {{
+      }
+    } catch (err) {
       alert("Error adding user: " + err);
-    }}
+    }
     return false;
-  }}
+  }
 
-  async function removeUser(username) {{
+  async function removeUser(username) {
     if (!confirm('Remove user ' + username + '?')) return;
-    try {{
-      const res = await fetch('/api/users/remove', {{
+    try {
+      const res = await fetch('/api/users/remove', {
         method: 'POST',
-        headers: {{ 'Content-Type': 'application/json' }},
-        body: JSON.stringify({{ username }})
-      }});
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username })
+      });
       const data = await res.json();
-      if (data.success) {{
+      if (data.success) {
         alert(data.message);
         fetchUsers();
-      }} else {{
+      } else {
         alert(data.error);
-      }}
-    }} catch (err) {{
+      }
+    } catch (err) {
       alert("Error removing user: " + err);
-    }}
-  }}
+    }
+  }
 
-  // Load current users on page load if visible
-  { 'fetchUsers();' if hasattr(__builtins__, 'current_user') and current_user.role == 'admin' else '' }
+  {% if role == 'admin' %}
+  fetchUsers();
+  {% endif %}
 </script>
 
 </body>
@@ -675,6 +668,7 @@ class TableTracker:
     def get_game_template(self, game_type):
         main_color = "#3498db" if game_type == "snooker" else "#2ecc71"
         bg_color = "#111" if game_type == "snooker" else "#222"
+        # No f-string necessary here; we inject the game_type into JS via a small variable in script tag.
         return f"""
 <!doctype html>
 <html lang="en">
@@ -980,7 +974,6 @@ class TableTracker:
         """
 
     def get_mobile_template(self, game_type):
-        # For simplicity, use same as desktop UI
         return self.get_game_template(game_type)
 
 
