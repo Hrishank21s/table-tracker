@@ -1,33 +1,193 @@
 {% extends "base.html" %}
 
-{% block title %}Login - Table Tracker{% endblock %}
+{% block title %}Gaming Dashboard - Table Tracker{% endblock %}
 
 {% block content %}
 <div class="container">
-    <div class="card" style="max-width: 400px; margin: 100px auto;">
-        <h2 style="text-align: center; margin-bottom: 30px;">
-            <i class="fas fa-sign-in-alt"></i> Table Tracker Login
-        </h2>
-        
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                {% for message in messages %}
-                    <div style="background: rgba(231, 76, 60, 0.2); padding: 10px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #e74c3c;">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-        
-        <form method="POST">
-            <div class="form-group">
-                <input type="text" name="username" class="form-control" placeholder="Username" required>
+    <div class="navbar">
+        <h1 class="glow-animation">
+            <i class="fas fa-table-tennis"></i> TABLE TRACKER
+        </h1>
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <div style="background: rgba(0, 255, 255, 0.1); padding: 10px 20px; border-radius: 20px; border: 1px solid var(--primary-neon);">
+                <i class="fas fa-user-circle" style="color: var(--primary-neon);"></i>
+                <span style="margin-left: 8px; font-family: 'Orbitron', monospace;">{{ current_user.username }}</span>
+                <span style="color: var(--accent-orange); margin-left: 8px;">({{ current_user.role.title() }})</span>
             </div>
-            <div class="form-group">
-                <input type="password" name="password" class="form-control" placeholder="Password" required>
-            </div>
-            <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
-        </form>
+            <a href="{{ url_for('logout') }}" class="btn btn-danger">
+                <i class="fas fa-sign-out-alt"></i> LOGOUT
+            </a>
+        </div>
     </div>
+    
+    <div class="grid grid-2" style="margin-bottom: 40px;">
+        <div class="card" style="background: linear-gradient(135deg, rgba(0, 255, 0, 0.1), rgba(0, 200, 0, 0.05)); border-color: var(--accent-green);">
+            <div style="text-align: center;">
+                <i class="fas fa-circle" style="color: var(--accent-green); font-size: 4em; margin-bottom: 20px;"></i>
+                <h2 class="neon-text" style="color: var(--accent-green); font-family: 'Orbitron', monospace; margin-bottom: 15px;">
+                    SNOOKER ARENA
+                </h2>
+                <p style="color: rgba(255, 255, 255, 0.8); margin-bottom: 25px; font-size: 16px;">
+                    Professional snooker table management with precision timing and advanced billing system.
+                </p>
+                <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                    <a href="{{ url_for('game_page', game_type='snooker') }}" class="btn btn-success">
+                        <i class="fas fa-desktop"></i> DESKTOP MODE
+                    </a>
+                    <a href="{{ url_for('mobile_page', game_type='snooker') }}" class="btn btn-primary">
+                        <i class="fas fa-mobile-alt"></i> MOBILE MODE
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card" style="background: linear-gradient(135deg, rgba(0, 180, 219, 0.1), rgba(0, 131, 176, 0.05)); border-color: #00b4db;">
+            <div style="text-align: center;">
+                <i class="fas fa-circle" style="color: #00b4db; font-size: 4em; margin-bottom: 20px;"></i>
+                <h2 class="neon-text" style="color: #00b4db; font-family: 'Orbitron', monospace; margin-bottom: 15px;">
+                    POOL ZONE
+                </h2>
+                <p style="color: rgba(255, 255, 255, 0.8); margin-bottom: 25px; font-size: 16px;">
+                    Casual pool table tracking with optimized rates and streamlined controls.
+                </p>
+                <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                    <a href="{{ url_for('game_page', game_type='pool') }}" class="btn btn-primary">
+                        <i class="fas fa-desktop"></i> DESKTOP MODE
+                    </a>
+                    <a href="{{ url_for('mobile_page', game_type='pool') }}" class="btn btn-success">
+                        <i class="fas fa-mobile-alt"></i> MOBILE MODE
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% if current_user.role == 'admin' %}
+    <div class="card" style="background: linear-gradient(135deg, rgba(255, 0, 255, 0.1), rgba(200, 0, 200, 0.05)); border-color: var(--secondary-neon);">
+        <h3 class="neon-text" style="color: var(--secondary-neon); font-family: 'Orbitron', monospace; margin-bottom: 25px;">
+            <i class="fas fa-users-cog"></i> ADMIN CONTROL PANEL
+        </h3>
+        
+        <div style="background: rgba(0, 0, 0, 0.3); padding: 25px; border-radius: 15px; margin-bottom: 25px;">
+            <h4 style="color: var(--accent-orange); margin-bottom: 20px;">
+                <i class="fas fa-user-plus"></i> Add New User
+            </h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 15px; align-items: end;">
+                <div>
+                    <input type="text" id="newUsername" placeholder="Username" class="form-control">
+                </div>
+                <div>
+                    <input type="password" id="newPassword" placeholder="Password" class="form-control">
+                </div>
+                <div>
+                    <select id="newRole" class="form-control">
+                        <option value="staff">Staff</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div>
+                    <button onclick="addUser()" class="btn btn-success">
+                        <i class="fas fa-plus"></i> ADD USER
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="usersList"></div>
+    </div>
+    {% endif %}
 </div>
+
+<script>
+{% if current_user.role == 'admin' %}
+async function loadUsers() {
+    try {
+        const response = await fetch('/api/users');
+        const data = await response.json();
+        const usersList = document.getElementById('usersList');
+        
+        if (data.success) {
+            usersList.innerHTML = `
+                <h4 style="color: var(--primary-neon); margin-bottom: 20px;">
+                    <i class="fas fa-users"></i> Current Users
+                </h4>
+                ${data.users.map(user => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(0, 0, 0, 0.3); margin: 10px 0; border-radius: 10px; border: 1px solid rgba(0, 255, 255, 0.2);">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <i class="fas fa-user-circle" style="color: var(--primary-neon); font-size: 24px;"></i>
+                            <div>
+                                <div style="font-weight: bold; font-family: 'Orbitron', monospace;">${user.username}</div>
+                                <div style="color: var(--accent-orange); font-size: 14px;">${user.role.toUpperCase()}</div>
+                            </div>
+                        </div>
+                        ${user.can_remove ? `
+                            <button onclick="removeUser('${user.username}')" class="btn btn-danger">
+                                <i class="fas fa-trash"></i> REMOVE
+                            </button>
+                        ` : '<span style="color: rgba(255,255,255,0.5);">Current User</span>'}
+                    </div>
+                `).join('')}
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading users:', error);
+    }
+}
+
+async function addUser() {
+    const username = document.getElementById('newUsername').value;
+    const password = document.getElementById('newPassword').value;
+    const role = document.getElementById('newRole').value;
+    
+    if (!username || !password) {
+        alert('⚠️ Please fill all fields');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/users/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password, role })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            document.getElementById('newUsername').value = '';
+            document.getElementById('newPassword').value = '';
+            loadUsers();
+            alert('✅ ' + data.message);
+        } else {
+            alert('❌ ' + data.error);
+        }
+    } catch (error) {
+        alert('❌ Error adding user');
+    }
+}
+
+async function removeUser(username) {
+    if (!confirm(`🗑️ Remove user ${username}? This action cannot be undone.`)) return;
+    
+    try {
+        const response = await fetch('/api/users/remove', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            loadUsers();
+            alert('✅ ' + data.message);
+        } else {
+            alert('❌ ' + data.error);
+        }
+    } catch (error) {
+        alert('❌ Error removing user');
+    }
+}
+
+loadUsers();
+{% endif %}
+</script>
 {% endblock %}
