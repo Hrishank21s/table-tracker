@@ -1,40 +1,168 @@
 {% extends "base.html" %}
 
-{% block title %}{{ game_type.title() }} - Table Tracker{% endblock %}
+{% block title %}{{ game_type.title() }} Arena - Table Tracker{% endblock %}
 
 {% block styles %}
 <style>
     .table-card {
-        background: {% if game_type == 'pool' %}rgba(52, 152, 219, 0.1){% else %}rgba(46, 204, 113, 0.1){% endif %};
-        border: 2px solid {% if game_type == 'pool' %}#3498db{% else %}#2ecc71{% endif %};
-        padding: 20px;
-        border-radius: 15px;
+        background: linear-gradient(135deg, 
+            {% if game_type == 'pool' %}rgba(0, 180, 219, 0.1){% else %}rgba(0, 255, 0, 0.1){% endif %}, 
+            {% if game_type == 'pool' %}rgba(0, 131, 176, 0.05){% else %}rgba(0, 200, 0, 0.05){% endif %}
+        );
+        border: 2px solid {% if game_type == 'pool' %}#00b4db{% else %}var(--accent-green){% endif %};
+        padding: 25px;
+        border-radius: 20px;
         text-align: center;
-        transition: all 0.3s ease;
+        transition: all 0.4s ease;
+        position: relative;
+        overflow: hidden;
     }
-    .table-card.running { animation: pulse 2s infinite; }
-    @keyframes pulse {
-        0% { box-shadow: 0 0 0 0 {% if game_type == 'pool' %}rgba(52, 152, 219, 0.7){% else %}rgba(46, 204, 113, 0.7){% endif %}; }
-        70% { box-shadow: 0 0 0 10px rgba(52, 152, 219, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0); }
+
+    .table-card::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+        transform: rotate(45deg);
+        transition: all 0.5s;
+        opacity: 0;
     }
+
+    .table-card:hover::before {
+        animation: shimmer 1.5s ease-in-out;
+    }
+
+    @keyframes shimmer {
+        0% { transform: rotate(45deg) translateX(-100%); opacity: 0; }
+        50% { opacity: 1; }
+        100% { transform: rotate(45deg) translateX(100%); opacity: 0; }
+    }
+
+    .table-card.running { 
+        border-color: var(--accent-green);
+        box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
+        animation: pulse-green 2s infinite;
+    }
+
+    .table-card.paused { 
+        border-color: var(--accent-orange);
+        box-shadow: 0 0 30px rgba(255, 136, 0, 0.3);
+        animation: pulse-orange 2s infinite;
+    }
+
+    @keyframes pulse-green {
+        0%, 100% { box-shadow: 0 0 30px rgba(0, 255, 0, 0.3); }
+        50% { box-shadow: 0 0 50px rgba(0, 255, 0, 0.6), 0 0 80px rgba(0, 255, 0, 0.2); }
+    }
+
+    @keyframes pulse-orange {
+        0%, 100% { box-shadow: 0 0 30px rgba(255, 136, 0, 0.3); }
+        50% { box-shadow: 0 0 50px rgba(255, 136, 0, 0.6), 0 0 80px rgba(255, 136, 0, 0.2); }
+    }
+
+    .timer-display {
+        font-size: 3.5em;
+        font-family: 'Orbitron', monospace;
+        font-weight: 900;
+        margin: 20px 0;
+        text-shadow: 0 0 20px currentColor;
+        letter-spacing: 3px;
+    }
+
+    .amount-display {
+        font-size: 2em;
+        font-family: 'Orbitron', monospace;
+        font-weight: 700;
+        color: var(--accent-green);
+        margin: 15px 0;
+        text-shadow: 0 0 15px var(--accent-green);
+    }
+
+    .table-status {
+        font-size: 1.2em;
+        font-family: 'Orbitron', monospace;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        margin-bottom: 15px;
+        padding: 10px 20px;
+        border-radius: 25px;
+        display: inline-block;
+    }
+
+    .status-idle {
+        background: rgba(150, 150, 150, 0.2);
+        color: #999;
+        border: 1px solid #666;
+    }
+
+    .status-running {
+        background: rgba(0, 255, 0, 0.2);
+        color: var(--accent-green);
+        border: 1px solid var(--accent-green);
+    }
+
+    .status-paused {
+        background: rgba(255, 136, 0, 0.2);
+        color: var(--accent-orange);
+        border: 1px solid var(--accent-orange);
+    }
+
     .sessions-container {
-        max-height: 200px;
+        max-height: 250px;
         overflow-y: auto;
-        background: rgba(0,0,0,0.3);
-        border-radius: 10px;
-        padding: 10px;
-        margin: 10px 0;
+        background: rgba(0, 0, 0, 0.5);
+        border-radius: 15px;
+        padding: 15px;
+        margin: 20px 0;
+        border: 1px solid rgba(0, 255, 255, 0.2);
     }
+
     .session-item {
         display: grid;
         grid-template-columns: 1fr 1fr 1fr 1fr;
         gap: 10px;
-        padding: 8px;
-        margin: 5px 0;
-        background: rgba(255,255,255,0.1);
-        border-radius: 5px;
-        font-size: 12px;
+        padding: 12px;
+        margin: 8px 0;
+        background: rgba(0, 255, 255, 0.1);
+        border-radius: 8px;
+        font-size: 13px;
+        font-family: 'Orbitron', monospace;
+        border: 1px solid rgba(0, 255, 255, 0.2);
+        transition: all 0.3s ease;
+    }
+
+    .session-item:hover {
+        background: rgba(0, 255, 255, 0.2);
+        transform: scale(1.02);
+    }
+
+    .control-section {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 15px;
+        padding: 20px;
+        margin: 20px 0;
+        border: 1px solid rgba(0, 255, 255, 0.2);
+    }
+
+    .rate-selector {
+        background: rgba(0, 0, 0, 0.5);
+        border: 2px solid rgba(0, 255, 255, 0.3);
+        border-radius: 10px;
+        padding: 10px 15px;
+        color: white;
+        font-family: 'Orbitron', monospace;
+        font-weight: 700;
+        margin-left: 10px;
+    }
+
+    .rate-selector:focus {
+        outline: none;
+        border-color: var(--primary-neon);
+        box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
     }
 </style>
 {% endblock %}
@@ -42,17 +170,34 @@
 {% block content %}
 <div class="container">
     <div class="navbar">
-        <h1><i class="fas fa-{% if game_type == 'pool' %}circle{% else %}dot-circle{% endif %}"></i> {{ game_type.title() }} Tables</h1>
-        <div>
-            <a href="{{ url_for('home') }}" class="btn btn-primary">🏠 Home</a>
-            <a href="{{ url_for('mobile_page', game_type=game_type) }}" class="btn btn-success">📱 Mobile</a>
-            <span>{{ current_user.username }}</span>
-            <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
+        <h1 class="glow-animation">
+            <i class="fas fa-{% if game_type == 'pool' %}circle{% else %}dot-circle{% endif %}" 
+               style="color: {% if game_type == 'pool' %}#00b4db{% else %}var(--accent-green){% endif %};"></i> 
+            {{ game_type.title() }} ARENA
+        </h1>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <a href="{{ url_for('home') }}" class="btn btn-primary">
+                <i class="fas fa-home"></i> HOME
+            </a>
+            <a href="{{ url_for('mobile_page', game_type=game_type) }}" class="btn btn-success">
+                <i class="fas fa-mobile-alt"></i> MOBILE
+            </a>
+            <div style="background: rgba(0, 255, 255, 0.1); padding: 8px 15px; border-radius: 15px; border: 1px solid var(--primary-neon);">
+                <span style="font-family: 'Orbitron', monospace;">{{ current_user.username }}</span>
+            </div>
+            <a href="{{ url_for('logout') }}" class="btn btn-danger">
+                <i class="fas fa-sign-out-alt"></i> LOGOUT
+            </a>
         </div>
     </div>
     
     <div id="tablesContainer" class="grid grid-3">
-        <div class="card">Loading tables...</div>
+        <div class="card" style="text-align: center;">
+            <div class="timer-display" style="color: var(--primary-neon);">
+                <i class="fas fa-spinner fa-spin"></i>
+            </div>
+            <div style="color: rgba(255, 255, 255, 0.7);">Loading Tables...</div>
+        </div>
     </div>
 </div>
 
@@ -78,52 +223,93 @@ function renderTables() {
     const container = document.getElementById('tablesContainer');
     container.innerHTML = Object.entries(tables).map(([id, table]) => `
         <div class="table-card ${table.status}">
-            <h3>Table ${id}</h3>
-            <div style="font-size: 24px; margin: 10px 0; color: ${table.status === 'running' ? '#2ecc71' : table.status === 'paused' ? '#f39c12' : '#95a5a6'};">
+            <div style="margin-bottom: 20px;">
+                <h2 style="font-family: 'Orbitron', monospace; color: {% if game_type == 'pool' %}#00b4db{% else %}var(--accent-green){% endif %}; font-size: 2em; margin-bottom: 10px;">
+                    <i class="fas fa-hashtag"></i> TABLE ${id}
+                </h2>
+                <div class="table-status status-${table.status}">
+                    <i class="fas fa-${table.status === 'running' ? 'play' : table.status === 'paused' ? 'pause' : 'stop'}"></i>
+                    ${table.status}
+                </div>
+            </div>
+            
+            <div class="timer-display" style="color: ${table.status === 'running' ? 'var(--accent-green)' : table.status === 'paused' ? 'var(--accent-orange)' : '#666'};">
                 ${table.time}
             </div>
-            <div style="font-size: 18px; margin: 10px 0;">₹${table.amount.toFixed(2)}</div>
-            <div style="margin: 10px 0;">
-                Rate: ₹${table.rate}/min
-                ${table.status === 'idle' ? `
-                    <select onchange="updateRate('${id}', this.value)" style="margin-left: 10px; padding: 5px;">
-                        ${[2.0, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5].map(rate => 
-                            `<option value="${rate}" ${rate === table.rate ? 'selected' : ''}>₹${rate}</option>`
-                        ).join('')}
-                    </select>
-                ` : ''}
+            
+            <div class="amount-display">
+                <i class="fas fa-rupee-sign"></i>${table.amount.toFixed(2)}
             </div>
-            <div style="margin: 15px 0;">
-                ${table.status === 'idle' ? `
-                    <button onclick="tableAction('${id}', 'start')" class="btn btn-success">Start</button>
-                ` : ''}
-                ${table.status === 'running' ? `
-                    <button onclick="tableAction('${id}', 'pause')" class="btn btn-warning">Pause</button>
-                ` : ''}
-                ${table.status === 'paused' ? `
-                    <button onclick="tableAction('${id}', 'start')" class="btn btn-success">Resume</button>
-                ` : ''}
-                ${table.status !== 'idle' ? `
-                    <button onclick="tableAction('${id}', 'end')" class="btn btn-danger">End</button>
-                ` : ''}
+            
+            <div class="control-section">
+                <div style="margin-bottom: 15px;">
+                    <span style="color: var(--primary-neon); font-family: 'Orbitron', monospace; font-weight: 700;">
+                        <i class="fas fa-tachometer-alt"></i> Rate: ₹${table.rate}/min
+                    </span>
+                    ${table.status === 'idle' ? `
+                        <select onchange="updateRate('${id}', this.value)" class="rate-selector">
+                            ${[2.0, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5].map(rate => 
+                                `<option value="${rate}" ${rate === table.rate ? 'selected' : ''}>₹${rate}</option>`
+                            ).join('')}
+                        </select>
+                    ` : ''}
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    ${table.status === 'idle' ? `
+                        <button onclick="tableAction('${id}', 'start')" class="btn btn-success" style="font-size: 16px; padding: 15px 30px;">
+                            <i class="fas fa-play"></i> START GAME
+                        </button>
+                    ` : ''}
+                    ${table.status === 'running' ? `
+                        <button onclick="tableAction('${id}', 'pause')" class="btn btn-warning" style="font-size: 16px; padding: 15px 30px;">
+                            <i class="fas fa-pause"></i> PAUSE
+                        </button>
+                        <button onclick="tableAction('${id}', 'end')" class="btn btn-danger" style="font-size: 16px; padding: 15px 30px;">
+                            <i class="fas fa-stop"></i> END GAME
+                        </button>
+                    ` : ''}
+                    ${table.status === 'paused' ? `
+                        <button onclick="tableAction('${id}', 'start')" class="btn btn-success" style="font-size: 16px; padding: 15px 30px;">
+                            <i class="fas fa-play"></i> RESUME
+                        </button>
+                        <button onclick="tableAction('${id}', 'end')" class="btn btn-danger" style="font-size: 16px; padding: 15px 30px;">
+                            <i class="fas fa-stop"></i> END GAME
+                        </button>
+                    ` : ''}
+                </div>
             </div>
+            
             ${table.sessions.length > 0 ? `
-                <div>
-                    <h4>Recent Sessions</h4>
+                <div class="control-section">
+                    <h4 style="color: var(--secondary-neon); font-family: 'Orbitron', monospace; margin-bottom: 15px;">
+                        <i class="fas fa-history"></i> SESSION HISTORY
+                    </h4>
                     <div class="sessions-container">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; padding: 8px; font-weight: 700; color: var(--primary-neon); border-bottom: 1px solid rgba(0, 255, 255, 0.3); margin-bottom: 10px;">
+                            <div>TIME</div>
+                            <div>DURATION</div>
+                            <div>AMOUNT</div>
+                            <div>DATE</div>
+                        </div>
                         ${table.sessions.slice(-5).map(session => `
                             <div class="session-item">
                                 <div>${session.start_time} - ${session.end_time}</div>
                                 <div>${session.duration} min</div>
-                                <div>₹${session.amount}</div>
+                                <div style="color: var(--accent-green);">₹${session.amount}</div>
                                 <div>${session.date}</div>
                             </div>
                         `).join('')}
                     </div>
-                    <div style="margin: 10px 0;">
-                        <input type="number" placeholder="Players" min="1" max="50" id="players-${id}" style="width: 80px; padding: 5px;">
-                        <button onclick="splitBill('${id}')" class="btn btn-primary">Split Bill</button>
-                        <button onclick="clearTable('${id}')" class="btn btn-danger">Clear</button>
+                    <div style="margin: 15px 0; display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap;">
+                        <input type="number" placeholder="Players" min="1" max="50" id="players-${id}" 
+                               style="width: 100px; padding: 8px; background: rgba(0,0,0,0.5); border: 1px solid var(--primary-neon); border-radius: 5px; color: white; text-align: center;">
+                        <button onclick="splitBill('${id}')" class="btn btn-primary">
+                            <i class="fas fa-calculator"></i> SPLIT BILL
+                        </button>
+                        <button onclick="clearTable('${id}')" class="btn btn-danger">
+                            <i class="fas fa-trash"></i> CLEAR
+                        </button>
                     </div>
                 </div>
             ` : ''}
@@ -133,6 +319,12 @@ function renderTables() {
 
 async function tableAction(tableId, action) {
     try {
+        // Add visual feedback
+        const button = event.target;
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> PROCESSING...';
+        button.disabled = true;
+        
         const response = await fetch(`/api/{{ game_type }}/table/${tableId}/action`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -143,9 +335,13 @@ async function tableAction(tableId, action) {
         if (data.success) {
             tables = data.tables;
             renderTables();
+            
+            // Show success notification
+            showNotification(data.result, 'success');
         }
     } catch (error) {
         console.error('Error with table action:', error);
+        showNotification('Action failed. Please try again.', 'error');
     }
 }
 
@@ -161,16 +357,18 @@ async function updateRate(tableId, rate) {
         if (data.success) {
             tables = data.tables;
             renderTables();
+            showNotification(`Rate updated to ₹${rate}/min`, 'success');
         }
     } catch (error) {
         console.error('Error updating rate:', error);
+        showNotification('Rate update failed', 'error');
     }
 }
 
 async function splitBill(tableId) {
     const players = document.getElementById(`players-${tableId}`).value;
     if (!players || players < 1) {
-        alert('Please enter valid number of players');
+        showNotification('Please enter valid number of players', 'error');
         return;
     }
     
@@ -183,15 +381,16 @@ async function splitBill(tableId) {
         
         const data = await response.json();
         if (data.success) {
-            alert(`Total: ₹${data.total_amount.toFixed(2)}\nPer Player: ₹${data.per_player.toFixed(2)}`);
+            showNotification(`💰 Total: ₹${data.total_amount.toFixed(2)} | Per Player: ₹${data.per_player.toFixed(2)}`, 'success');
         }
     } catch (error) {
         console.error('Error splitting bill:', error);
+        showNotification('Bill split failed', 'error');
     }
 }
 
 async function clearTable(tableId) {
-    if (!confirm('Clear all session data for this table?')) return;
+    if (!confirm('🗑️ Clear all session data for this table? This action cannot be undone.')) return;
     
     try {
         const response = await fetch(`/api/{{ game_type }}/table/${tableId}/clear`, {
@@ -204,10 +403,40 @@ async function clearTable(tableId) {
         if (data.success) {
             tables = data.tables;
             renderTables();
+            showNotification('Table sessions cleared successfully', 'success');
         }
     } catch (error) {
         console.error('Error clearing table:', error);
+        showNotification('Clear operation failed', 'error');
     }
+}
+
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? 'linear-gradient(135deg, rgba(0, 255, 0, 0.9), rgba(0, 200, 0, 0.8))' : 'linear-gradient(135deg, rgba(255, 0, 64, 0.9), rgba(200, 0, 50, 0.8))'};
+        color: white;
+        padding: 15px 25px;
+        border-radius: 10px;
+        font-family: 'Orbitron', monospace;
+        font-weight: 700;
+        z-index: 1000;
+        border: 2px solid ${type === 'success' ? 'var(--accent-green)' : '#ff0040'};
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+        transform: translateX(400px);
+        transition: transform 0.3s ease;
+    `;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => notification.style.transform = 'translateX(0)', 100);
+    setTimeout(() => {
+        notification.style.transform = 'translateX(400px)';
+        setTimeout(() => document.body.removeChild(notification), 300);
+    }, 3000);
 }
 
 // Initialize
@@ -220,3 +449,4 @@ window.addEventListener('beforeunload', () => {
 });
 </script>
 {% endblock %}
+
