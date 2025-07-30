@@ -317,5 +317,5 @@ class TableTracker:
         def split_bill(game_type, table_id):
             try:
                 data = request.get_json()
-                players = int(data.get('players',
+                players = int(data.get('players',)
 
