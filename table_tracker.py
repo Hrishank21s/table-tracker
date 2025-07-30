@@ -318,3 +318,25 @@ class TableTracker:
             try:
                 data = request.get_json()
                 players = int(data.get('players', 0))
+                if not players or players < 1:
+                    return jsonify({"error": "Invalid number of players"}), 400
+                
+                tables = self.snooker_tables if game_type == 'snooker' else self.pool_tables
+                if table_id not in tables:
+                    return jsonify({"error": "Invalid table"}), 400
+                
+                table = tables[table_id]
+                if not table['sessions']:
+                    return jsonify({"error": "No sessions to split"}), 400
+                
+                total_amount = table['sessions'][-1]['amount']
+                return jsonify({
+                    "success": True,
+                    "total_amount": total_amount,
+                    "players": players,
+                    "per_player": round(total_amount / players, 2)
+                })
+            except Exception as e:
+                print(f"Split bill error: {e}")
+                return jsonify({"error": str(e)}), 500
+
