@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Professional Table Tracker System - Optimized for Render
+Professional Table Tracker System - Gaming Style UI
 Features: Login System, User Management, Snooker & Pool Tracking, Split Bills
 """
 
@@ -59,8 +59,14 @@ class TableTracker:
     def create_table(self, rate):
         """Create a new table with default values"""
         return {
-            "status": "idle", "time": "00:00", "rate": rate, "amount": 0.0,
-            "start_time": None, "elapsed_seconds": 0, "sessions": []
+            "status": "idle", 
+            "time": "00:00", 
+            "rate": rate, 
+            "amount": 0.0,
+            "start_time": None, 
+            "elapsed_seconds": 0, 
+            "sessions": [],
+            "pause_time": None
         }
     
     def setup_authentication(self):
@@ -238,22 +244,37 @@ class TableTracker:
             })
     
     def handle_table_action(self, game_type, table_id, action):
-        """Handle table state changes"""
+        """Handle table state changes - FIXED TIMER LOGIC"""
         tables = self.snooker_tables if game_type == 'snooker' else self.pool_tables
         table = tables[table_id]
+        current_time = datetime.now()
         
         if action == 'start':
             if table['status'] == 'idle':
-                table.update({'status': 'running', 'start_time': datetime.now(), 
-                            'elapsed_seconds': 0, 'session_start_time': datetime.now().strftime("%H:%M:%S")})
-            return f"Table {table_id} started"
+                table.update({
+                    'status': 'running', 
+                    'start_time': current_time, 
+                    'elapsed_seconds': 0, 
+                    'session_start_time': current_time.strftime("%H:%M:%S"),
+                    'pause_time': None
+                })
+                return f"Table {table_id} started"
+            elif table['status'] == 'paused':
+                # Resume from pause
+                table.update({
+                    'status': 'running',
+                    'start_time': current_time,
+                    'pause_time': None
+                })
+                return f"Table {table_id} resumed"
         
         elif action == 'pause':
             if table['status'] == 'running':
-                table['status'] = 'paused'
-            elif table['status'] == 'paused':
-                table.update({'status': 'running', 'start_time': datetime.now()})
-            return f"Table {table_id} {'paused' if table['status'] == 'paused' else 'resumed'}"
+                table.update({
+                    'status': 'paused',
+                    'pause_time': current_time
+                })
+                return f"Table {table_id} paused"
         
         elif action == 'end':
             if table['status'] in ['running', 'paused']:
@@ -262,34 +283,39 @@ class TableTracker:
                 
                 session = {
                     "start_time": table.get('session_start_time', '00:00:00'),
-                    "end_time": datetime.now().strftime("%H:%M:%S"),
+                    "end_time": current_time.strftime("%H:%M:%S"),
                     "duration": round(duration_minutes, 1),
                     "amount": round(amount, 2),
-                    "date": datetime.now().strftime("%Y-%m-%d"),
+                    "date": current_time.strftime("%Y-%m-%d"),
                     "user": current_user.username
                 }
                 
                 table['sessions'].append(session)
                 table.update({
-                    'status': 'idle', 'time': '00:00', 'amount': 0,
-                    'start_time': None, 'elapsed_seconds': 0, 'session_start_time': None
+                    'status': 'idle', 
+                    'time': '00:00', 
+                    'amount': 0,
+                    'start_time': None, 
+                    'elapsed_seconds': 0, 
+                    'session_start_time': None,
+                    'pause_time': None
                 })
                 return f"Table {table_id} ended - ₹{amount:.2f}"
         
         return "No action taken"
     
     def update_timers(self):
-        """Background timer for running tables"""
+        """Background timer for running tables - FIXED"""
         while self.running:
             try:
                 for tables in [self.snooker_tables, self.pool_tables]:
                     for table in tables.values():
                         if table['status'] == 'running' and table['start_time']:
+                            # Only increment if not paused and has start time
                             table['elapsed_seconds'] += 1
                             minutes, seconds = divmod(table['elapsed_seconds'], 60)
                             table['time'] = f"{minutes:02d}:{seconds:02d}"
-                            table['amount'] = (table['elapsed_seconds'] / 60) * table['rate']
-                            table['start_time'] = datetime.now()
+                            table['amount'] = round((table['elapsed_seconds'] / 60) * table['rate'], 2)
                 time.sleep(1)
             except Exception as e:
                 print(f"Timer error: {e}")
