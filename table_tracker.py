@@ -2,14 +2,10 @@
 import json
 import threading
 import time
+import os
+from datetime import datetime
+import socket
 from flask import Flask, render_template_string, request, jsonify, redirect, url_for, flash
-
-# Create a global instance of TableTracker
-def create_app():
-    tracker = TableTracker()
-    return tracker.app
-
-app = create_app()
 from flask_cors import CORS
 from flask_login import (
     LoginManager,
@@ -20,6 +16,18 @@ from flask_login import (
     current_user,
 )
 from werkzeug.security import generate_password_hash, check_password_hash
+from functools import wraps
+
+class User(UserMixin):
+    def __init__(self, id, username, password_hash, role):
+        self.id = id
+        self.username = username
+        self.password_hash = password_hash
+        self.role = role  # 'admin' or 'staff'
+
+class TableTracker:
+    def __init__(self):
+        # Initialize table data
 from functools import wraps
 from datetime import datetime
 import socket
@@ -1001,7 +1009,13 @@ class TableTracker:
         with open(os.path.join(os.path.dirname(__file__), "templates/mobile.html")) as f:
             return f.read()
 
-if __name__ == "__main__":
+def create_app():
+    """Create and configure the Flask application"""
     tracker = TableTracker()
-    app = tracker.app
+    return tracker.app
+
+# Create the application instance
+app = create_app()
+
+if __name__ == "__main__":
     app.run(debug=True)
