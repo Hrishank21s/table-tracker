@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Table Tracker{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="navbar">
+        <h1><i class="fas fa-table-tennis"></i> Table Tracker</h1>
+        <div>
+            <span>👤 {{ current_user.username }} ({{ current_user.role.title() }})</span>
+            <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
+        </div>
+    </div>
+    
+    <div class="grid grid-2">
+        <div class="card">
+            <h2><i class="fas fa-circle" style="color: #2ecc71;"></i> Snooker</h2>
+            <p>Full-featured table tracking with timer, billing, and session management.</p>
+            <a href="{{ url_for('game_page', game_type='snooker') }}" class="btn btn-primary">Open Snooker</a>
+            <a href="{{ url_for('mobile_page', game_type='snooker') }}" class="btn btn-success">📱 Mobile</a>
+        </div>
+        
+        <div class="card">
+            <h2><i class="fas fa-circle" style="color: #3498db;"></i> Pool</h2>
+            <p>Pool table management system with specialized lower rates.</p>
+            <a href="{{ url_for('game_page', game_type='pool') }}" class="btn btn-primary">Open Pool</a>
+            <a href="{{ url_for('mobile_page', game_type='pool') }}" class="btn btn-success">📱 Mobile</a>
+        </div>
+    </div>
+    
+    {% if current_user.role == 'admin' %}
+    <div class="card">
+        <h3><i class="fas fa-users"></i> User Management</h3>
+        <div style="display: flex; gap: 10px; margin: 20px 0;">
+            <input type="text" id="newUsername" placeholder="Username" class="form-control" style="flex: 1;">
+            <input type="password" id="newPassword" placeholder="Password" class="form-control" style="flex: 1;">
+            <select id="newRole" class="form-control" style="flex: 1;">
+                <option value="staff">Staff</option>
+                <option value="admin">Admin</option>
+            </select>
+            <button onclick="addUser()" class="btn btn-success">Add User</button>
+        </div>
+        <div id="usersList"></div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+{% if current_user.role == 'admin' %}
+async function loadUsers() {
+    try {
+        const response = await fetch('/api/users');
+        const data = await response.json();
+        const usersList = document.getElementById('usersList');
+        
+        if (data.success) {
+            usersList.innerHTML = data.users.map(user => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: rgba(255,255,255,0.1); margin: 5px 0; border-radius: 5px;">
+                    <span>${user.username} (${user.role})</span>
+                    ${user.can_remove ? `<button onclick="removeUser('${user.username}')" class="btn btn-danger">Remove</button>` : ''}
+                </div>
+            `).join('');
+        }
+    } catch (error) {
+        console.error('Error loading users:', error);
+    }
+}
+
+async function addUser() {
+    const username = document.getElementById('newUsername').value;
+    const password = document.getElementById('newPassword').value;
+    const role = document.getElementById('newRole').value;
+    
+    if (!username || !password) {
+        alert('Please fill all fields');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/users/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password, role })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            document.getElementById('newUsername').value = '';
+            document.getElementById('newPassword').value = '';
+            loadUsers();
+            alert(data.message);
+        } else {
+            alert(data.error);
+        }
+    } catch (error) {
+        alert('Error adding user');
+    }
+}
+
+async function removeUser(username) {
+    if (!confirm(`Remove user ${username}?`)) return;
+    
+    try {
+        const response = await fetch('/api/users/remove', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            loadUsers();
+            alert(data.message);
+        } else {
+            alert(data.error);
+        }
+    } catch (error) {
+        alert('Error removing user');
+    }
+}
+
+loadUsers();
+{% endif %}
+</script>
+{% endblock %}

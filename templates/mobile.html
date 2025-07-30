@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}{{ game_type.title() }} Mobile - Table Tracker{% endblock %}
+
+{% block styles %}
+<style>
+    .mobile-table {
+        background: {% if game_type == 'pool' %}rgba(52, 152, 219, 0.1){% else %}rgba(46, 204, 113, 0.1){% endif %};
+        border: 2px solid {% if game_type == 'pool' %}#3498db{% else %}#2ecc71{% endif %};
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 10px;
+        text-align: center;
+    }
+    .mobile-table.running { border-color: #2ecc71; background: rgba(46, 204, 113, 0.2); }
+    .mobile-table.paused { border-color: #f39c12; background: rgba(243, 156, 18, 0.2); }
+    .time-display { font-size: 28px; font-weight: bold; margin: 10px 0; }
+    .amount-display { font-size: 20px; color: #2ecc71; margin: 5px 0; }
+    .mobile-btn {
+        padding: 10px 20px;
+        margin: 5px;
+        border: none;
+        border-radius: 5px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    @media (max-width: 768px) {
+        .container { padding: 10px; }
+        .mobile-table { margin: 5px 0; padding: 10px; }
+        .time-display { font-size: 24px; }
+        .amount-display { font-size: 18px; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div style="text-align: center; margin-bottom: 20px;">
+        <h2><i class="fas fa-mobile-alt"></i> {{ game_type.title() }} Mobile Control</h2>
+        <p>Auto-updates every 1 second</p>
+        <div style="margin: 10px 0;">
+            <a href="{{ url_for('game_page', game_type=game_type) }}" class="btn btn-primary">Desktop View</a>
+            <a href="{{ url_for('home') }}" class="btn btn-success">Home</a>
+        </div>
+    </div>
+    
+    <div id="mobileTablesContainer">
+        <div style="text-align: center; padding: 20px;">Loading...</div>
+    </div>
+</div>
+
+<script>
+let tables = {};
+
+async function loadTables() {
+    try {
+        const response = await fetch(`/api/{{ game_type }}/tables`);
+        const data = await response.json();
+        
+        if (data.success) {
+            tables = data.tables;
+            renderMobileTables();
+        }
+    } catch (error) {
+        console.error('Error loading tables:', error);
+    }
+}
+
+function renderMobileTables() {
+    const container = document.getElementById('mobileTablesContainer');
+    container.innerHTML = Object.entries(tables).map(([id, table]) => `
+        <div class="mobile-table ${table.status}">
+            <h3>Table ${id} - ${table.status.toUpperCase()}</h3>
+            <div class="time-display">${table.time}</div>
+            <div class="amount-display">₹${table.amount.toFixed(2)} (₹${table.rate}/min)</div>
+            
+            <div style="margin: 15px 0;">
+                ${table.status === 'idle' ? `
+                    <button onclick="tableAction('${id}', 'start')" class="mobile-btn" style="background: #2ecc71; color: white;">START</button>
+                ` : ''}
+                ${table.status === 'running' ? `
+                    <button onclick="tableAction('${id}', 'pause')" class="mobile-btn" style="background: #f39c12; color: white;">PAUSE</button>
+                    <button onclick="tableAction('${id}', 'end')" class="mobile-btn" style="background: #e74c3c; color: white;">END</button>
+                ` : ''}
+                ${table.status === 'paused' ? `
+                    <button onclick="tableAction('${id}', 'start')" class="mobile-btn" style="background: #2ecc71; color: white;">RESUME</button>
+                    <button onclick="tableAction('${id}', 'end')" class="mobile-btn" style="background: #e74c3c; color: white;">END</button>
+                ` : ''}
+            </div>
+            
+            ${table.sessions.length > 0 ? `
+                <div style="font-size: 14px; color: #bdc3c7;">
+                    Last session: ₹${table.sessions[table.sessions.length - 1].amount} 
+                    (${table.sessions[table.sessions.length - 1].duration} min)
+                </div>
+            ` : ''}
+        </div>
+    `).join('');
+}
+
+async function tableAction(tableId, action) {
+    try {
+        const response = await fetch(`/api/{{ game_type }}/table/${tableId}/action`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            tables = data.tables;
+            renderMobileTables();
+            
+            // Haptic feedback on mobile
+            if (navigator.vibrate) {
+                navigator.vibrate(100);
+            }
+        }
+    } catch (error) {
+        console.error('Error with table action:', error);
+    }
+}
+
+// Initialize and auto-update
+loadTables();
+setInterval(loadTables, 1000);
+
+// Add swipe-to-refresh functionality
+let startY = 0;
+document.addEventListener('touchstart', e => {
+    startY = e.touches[0].clientY;
+});
+
+document.addEventListener('touchmove', e => {
+    if (e.touches[0].clientY > startY + 50 && window.scrollY === 0) {
+        loadTables();
+    }
+});
+</script>
+{% endblock %}
